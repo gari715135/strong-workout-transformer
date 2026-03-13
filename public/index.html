@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strong Workout CSV Transformer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #222; }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; }
+    p.subtitle { color: #666; margin-top: 0; margin-bottom: 24px; }
+    input[type="file"] { display: block; margin-bottom: 16px; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin-bottom: 24px; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+    th { background: #f4f4f4; }
+    h2 { font-size: 1rem; margin-top: 28px; margin-bottom: 8px; }
+    button#downloadBtn { padding: 10px 20px; background: #0070f3; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
+    button#downloadBtn:hover { background: #005ed4; }
+    #output { display: none; }
+    .tag { display: inline-block; background: #e0f0ff; color: #0057b3; border-radius: 4px; padding: 1px 7px; font-size: 0.78rem; margin-left: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Strong Workout CSV Transformer</h1>
+  <p class="subtitle">Doubles the weight for all dumbbell exercises in your Strong app export.</p>
+
+  <input type="file" id="fileInput" accept=".csv">
+
+  <div id="output">
+    <h2>Dumbbell rows — <span class="tag">before</span></h2>
+    <div id="beforeTable"></div>
+
+    <h2>Dumbbell rows — <span class="tag">after (weight × 2)</span></h2>
+    <div id="afterTable"></div>
+
+    <button id="downloadBtn">Download strong_workouts_updated.csv</button>
+  </div>
+
+  <script>
+    let updatedData = null;
+    let updatedFields = null;
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          const fields = results.meta.fields;
+          const rows = results.data;
+
+          // Find dumbbell rows before transformation
+          const dumbbellRows = rows.filter(r =>
+            (r['Exercise Name'] || '').toLowerCase().includes('dumbbell')
+          );
+
+          // Render before table
+          document.getElementById('beforeTable').innerHTML = buildTable(dumbbellRows, fields);
+
+          // Transform: double the Weight for dumbbell rows
+          const transformed = rows.map(r => {
+            if ((r['Exercise Name'] || '').toLowerCase().includes('dumbbell')) {
+              const w = parseFloat(r['Weight']);
+              return { ...r, Weight: isNaN(w) ? r['Weight'] : w * 2 };
+            }
+            return r;
+          });
+
+          // Dumbbell rows after
+          const dumbbellAfter = transformed.filter(r =>
+            (r['Exercise Name'] || '').toLowerCase().includes('dumbbell')
+          );
+          document.getElementById('afterTable').innerHTML = buildTable(dumbbellAfter, fields);
+
+          updatedData = transformed;
+          updatedFields = fields;
+          document.getElementById('output').style.display = 'block';
+        }
+      });
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', function() {
+      if (!updatedData) return;
+      const csv = Papa.unparse({ fields: updatedFields, data: updatedData });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'strong_workouts_updated.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    function buildTable(rows, fields) {
+      if (rows.length === 0) return '<p>No dumbbell rows found.</p>';
+      let html = '<table><thead><tr>';
+      for (const f of fields) html += `<th>${esc(f)}</th>`;
+      html += '</tr></thead><tbody>';
+      for (const row of rows) {
+        html += '<tr>';
+        for (const f of fields) html += `<td>${esc(row[f] ?? '')}</td>`;
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      return html;
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>
