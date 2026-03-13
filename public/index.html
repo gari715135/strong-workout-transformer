@@ -6,34 +6,180 @@
   <title>Strong Workout CSV Transformer</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #222; }
-    h1 { font-size: 1.4rem; margin-bottom: 4px; }
-    p.subtitle { color: #666; margin-top: 0; margin-bottom: 24px; }
-    input[type="file"] { display: block; margin-bottom: 16px; }
-    table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin-bottom: 24px; }
-    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
-    th { background: #f4f4f4; }
-    h2 { font-size: 1rem; margin-top: 28px; margin-bottom: 8px; }
-    button#downloadBtn { padding: 10px 20px; background: #0070f3; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
-    button#downloadBtn:hover { background: #005ed4; }
-    #output { display: none; }
-    .tag { display: inline-block; background: #e0f0ff; color: #0057b3; border-radius: 4px; padding: 1px 7px; font-size: 0.78rem; margin-left: 6px; }
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px 20px;
+      background: #0a0a0f;
+      color: #e8e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .card {
+      background: #13131a;
+      border: 1px solid #2a2a3a;
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 0 60px rgba(80, 60, 200, 0.08);
+    }
+
+    .logo {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin: 0 0 6px;
+      background: linear-gradient(90deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    p.subtitle {
+      color: #888;
+      margin: 0 0 32px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .upload-area {
+      border: 2px dashed #2a2a3a;
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .upload-area:hover {
+      border-color: #7c3aed;
+      background: rgba(124, 58, 237, 0.05);
+    }
+
+    .upload-area.has-file {
+      border-color: #4ade80;
+      background: rgba(74, 222, 128, 0.05);
+    }
+
+    .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+
+    .upload-label {
+      display: block;
+      font-size: 0.9rem;
+      color: #aaa;
+      cursor: pointer;
+    }
+
+    .upload-label span {
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .file-name {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #4ade80;
+      font-weight: 500;
+    }
+
+    input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    #output { display: none; margin-top: 24px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #e8e8f0;
+    }
+
+    .stat-value.accent { color: #a78bfa; }
+
+    button#downloadBtn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    button#downloadBtn:hover { opacity: 0.9; }
+    button#downloadBtn:active { transform: scale(0.98); }
   </style>
 </head>
 <body>
-  <h1>Strong Workout CSV Transformer</h1>
-  <p class="subtitle">Doubles the weight for all dumbbell exercises in your Strong app export.</p>
+  <div class="card">
+    <div class="logo">🏋️</div>
+    <h1>Strong CSV Transformer</h1>
+    <p class="subtitle">Doubles the weight for all dumbbell exercises and fixes timestamps to UTC from NYC local time.</p>
 
-  <input type="file" id="fileInput" accept=".csv">
+    <div class="upload-area" id="uploadArea">
+      <input type="file" id="fileInput" accept=".csv">
+      <div class="upload-icon">📂</div>
+      <label class="upload-label" for="fileInput">
+        Drop your CSV here or <span>browse</span>
+      </label>
+      <div class="file-name" id="fileName"></div>
+    </div>
 
-  <div id="output">
-    <button id="downloadBtn">Download strong_workouts_updated.csv</button>
-
-    <h2>Dumbbell rows — <span class="tag">before</span></h2>
-    <div id="beforeTable"></div>
-
-    <h2>Dumbbell rows — <span class="tag">after (weight × 2)</span></h2>
-    <div id="afterTable"></div>
+    <div id="output">
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Total rows</div>
+          <div class="stat-value" id="statTotal">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Dumbbell rows updated</div>
+          <div class="stat-value accent" id="statDumbbell">—</div>
+        </div>
+      </div>
+      <button id="downloadBtn">Download updated CSV</button>
+    </div>
   </div>
 
   <script>
@@ -45,6 +191,9 @@
       e.target.value = '';  // reset so re-selecting the same file fires change again
       if (!file) return;
 
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('uploadArea').classList.add('has-file');
+
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
@@ -52,30 +201,21 @@
           const fields = results.meta.fields;
           const rows = results.data;
 
-          // Find dumbbell rows before transformation
-          const dumbbellRows = rows.filter(r =>
-            (r['Exercise Name'] || '').toLowerCase().includes('dumbbell')
-          );
-
-          // Render before table
-          document.getElementById('beforeTable').innerHTML = buildTable(dumbbellRows, fields);
-
           // Transform: convert dates from NYC local time to UTC, double weight for dumbbell rows
+          let dumbbellCount = 0;
           const transformed = rows.map(r => {
             const result = { ...r };
-            if (r['Date']) result['Date'] = formatWithNYCTimezone(r['Date']);
+            if (r['Date']) result['Date'] = nycLocalToUtc(r['Date']);
             if ((r['Exercise Name'] || '').toLowerCase().includes('dumbbell')) {
               const w = parseFloat(r['Weight']);
               result['Weight'] = isNaN(w) ? r['Weight'] : w * 2;
+              dumbbellCount++;
             }
             return result;
           });
 
-          // Dumbbell rows after
-          const dumbbellAfter = transformed.filter(r =>
-            (r['Exercise Name'] || '').toLowerCase().includes('dumbbell')
-          );
-          document.getElementById('afterTable').innerHTML = buildTable(dumbbellAfter, fields);
+          document.getElementById('statTotal').textContent = rows.length.toLocaleString();
+          document.getElementById('statDumbbell').textContent = dumbbellCount.toLocaleString();
 
           updatedData = transformed;
           updatedFields = fields;
@@ -96,23 +236,9 @@
       URL.revokeObjectURL(url);
     });
 
-    function buildTable(rows, fields) {
-      if (rows.length === 0) return '<p>No dumbbell rows found.</p>';
-      let html = '<table><thead><tr>';
-      for (const f of fields) html += `<th>${esc(f)}</th>`;
-      html += '</tr></thead><tbody>';
-      for (const row of rows) {
-        html += '<tr>';
-        for (const f of fields) html += `<td>${esc(row[f] ?? '')}</td>`;
-        html += '</tr>';
-      }
-      html += '</tbody></table>';
-      return html;
-    }
-
     // Converts "YYYY-MM-DD HH:MM:SS" (NYC local time) to the equivalent UTC
     // time in the same format. Handles EST (UTC-5) and EDT (UTC-4) automatically.
-    function formatWithNYCTimezone(dateStr) {
+    function nycLocalToUtc(dateStr) {
       const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
       if (!match) return dateStr;
       const [, Y, Mo, D, h, mi, s] = match;
@@ -133,19 +259,12 @@
       const nycEpoch = Date.UTC(get('year'), get('month') - 1, get('day'),
                                 get('hour') % 24, get('minute'), get('second'));
 
-      // offsetMs: how far UTC is ahead of NYC (positive = NYC is behind UTC)
       const offsetMs = probe.getTime() - nycEpoch;
-
-      // True UTC = NYC local + offset
       const utc = new Date(probe.getTime() + offsetMs);
 
       const pad = n => String(n).padStart(2, '0');
       return `${utc.getUTCFullYear()}-${pad(utc.getUTCMonth() + 1)}-${pad(utc.getUTCDate())} ` +
              `${pad(utc.getUTCHours())}:${pad(utc.getUTCMinutes())}:${pad(utc.getUTCSeconds())}`;
-    }
-
-    function esc(s) {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
   </script>
 </body>
