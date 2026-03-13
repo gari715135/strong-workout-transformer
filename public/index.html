@@ -42,6 +42,7 @@
 
     document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
+      e.target.value = '';  // reset so re-selecting the same file fires change again
       if (!file) return;
 
       Papa.parse(file, {
