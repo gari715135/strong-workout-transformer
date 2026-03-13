@@ -59,13 +59,15 @@
           // Render before table
           document.getElementById('beforeTable').innerHTML = buildTable(dumbbellRows, fields);
 
-          // Transform: double the Weight for dumbbell rows
+          // Transform: add NYC timezone to dates, double weight for dumbbell rows
           const transformed = rows.map(r => {
+            const result = { ...r };
+            if (r['Date']) result['Date'] = formatWithNYCTimezone(r['Date']);
             if ((r['Exercise Name'] || '').toLowerCase().includes('dumbbell')) {
               const w = parseFloat(r['Weight']);
-              return { ...r, Weight: isNaN(w) ? r['Weight'] : w * 2 };
+              result['Weight'] = isNaN(w) ? r['Weight'] : w * 2;
             }
-            return r;
+            return result;
           });
 
           // Dumbbell rows after
@@ -105,6 +107,38 @@
       }
       html += '</tbody></table>';
       return html;
+    }
+
+    // Takes "YYYY-MM-DD HH:MM:SS" (NYC local time) and returns an ISO 8601
+    // string with the correct America/New_York UTC offset (handles EST/EDT).
+    // Strategy: treat the value temporarily as UTC to ask the Intl API what
+    // NYC wall-clock time corresponds to that UTC instant. The difference
+    // between the two gives the true NYC offset at that point in time.
+    function formatWithNYCTimezone(dateStr) {
+      const match = dateStr.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/);
+      if (!match) return dateStr;
+      const [, date, time] = match;
+
+      // Treat the local NYC time as if it were UTC (a temporary fiction so we
+      // can ask Intl what NYC offset applies near that moment).
+      const probeUtc = new Date(`${date}T${time}Z`);
+
+      // 'sv-SE' locale gives "YYYY-MM-DD HH:MM:SS" — easy to parse back.
+      const nycLocal = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/New_York'
+      }).format(probeUtc);
+
+      // offsetMinutes = how many minutes UTC is ahead of NYC
+      // (positive → NYC is behind UTC, i.e. the offset sign is "-")
+      const offsetMs = probeUtc.getTime() - new Date(nycLocal.replace(' ', 'T') + 'Z').getTime();
+      const offsetMinutes = Math.round(offsetMs / 60000);
+
+      const sign = offsetMinutes >= 0 ? '-' : '+';
+      const absMin = Math.abs(offsetMinutes);
+      const hh = String(Math.floor(absMin / 60)).padStart(2, '0');
+      const mm = String(absMin % 60).padStart(2, '0');
+
+      return `${date}T${time}${sign}${hh}:${mm}`;
     }
 
     function esc(s) {
