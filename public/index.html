@@ -59,7 +59,7 @@
           // Render before table
           document.getElementById('beforeTable').innerHTML = buildTable(dumbbellRows, fields);
 
-          // Transform: add NYC timezone to dates, double weight for dumbbell rows
+          // Transform: convert dates from NYC local time to UTC, double weight for dumbbell rows
           const transformed = rows.map(r => {
             const result = { ...r };
             if (r['Date']) result['Date'] = formatWithNYCTimezone(r['Date']);
@@ -109,36 +109,38 @@
       return html;
     }
 
-    // Takes "YYYY-MM-DD HH:MM:SS" (NYC local time) and returns an ISO 8601
-    // string with the correct America/New_York UTC offset (handles EST/EDT).
-    // Strategy: treat the value temporarily as UTC to ask the Intl API what
-    // NYC wall-clock time corresponds to that UTC instant. The difference
-    // between the two gives the true NYC offset at that point in time.
+    // Converts "YYYY-MM-DD HH:MM:SS" (NYC local time) to the equivalent UTC
+    // time in the same format. Handles EST (UTC-5) and EDT (UTC-4) automatically.
     function formatWithNYCTimezone(dateStr) {
-      const match = dateStr.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/);
+      const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
       if (!match) return dateStr;
-      const [, date, time] = match;
+      const [, Y, Mo, D, h, mi, s] = match;
 
-      // Treat the local NYC time as if it were UTC (a temporary fiction so we
-      // can ask Intl what NYC offset applies near that moment).
-      const probeUtc = new Date(`${date}T${time}Z`);
+      // Temporarily treat the NYC local time as UTC to get a probe timestamp,
+      // then ask the Intl API what NYC wall-clock time that UTC maps to.
+      // The difference is the true NYC UTC offset at that moment (EST or EDT).
+      const probe = new Date(Date.UTC(+Y, +Mo - 1, +D, +h, +mi, +s));
 
-      // 'sv-SE' locale gives "YYYY-MM-DD HH:MM:SS" — easy to parse back.
-      const nycLocal = new Intl.DateTimeFormat('sv-SE', {
-        timeZone: 'America/New_York'
-      }).format(probeUtc);
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      }).formatToParts(probe);
 
-      // offsetMinutes = how many minutes UTC is ahead of NYC
-      // (positive → NYC is behind UTC, i.e. the offset sign is "-")
-      const offsetMs = probeUtc.getTime() - new Date(nycLocal.replace(' ', 'T') + 'Z').getTime();
-      const offsetMinutes = Math.round(offsetMs / 60000);
+      const get = type => +parts.find(p => p.type === type).value;
+      const nycEpoch = Date.UTC(get('year'), get('month') - 1, get('day'),
+                                get('hour') % 24, get('minute'), get('second'));
 
-      const sign = offsetMinutes >= 0 ? '-' : '+';
-      const absMin = Math.abs(offsetMinutes);
-      const hh = String(Math.floor(absMin / 60)).padStart(2, '0');
-      const mm = String(absMin % 60).padStart(2, '0');
+      // offsetMs: how far UTC is ahead of NYC (positive = NYC is behind UTC)
+      const offsetMs = probe.getTime() - nycEpoch;
 
-      return `${date}T${time}${sign}${hh}:${mm}`;
+      // True UTC = NYC local + offset
+      const utc = new Date(probe.getTime() + offsetMs);
+
+      const pad = n => String(n).padStart(2, '0');
+      return `${utc.getUTCFullYear()}-${pad(utc.getUTCMonth() + 1)}-${pad(utc.getUTCDate())} ` +
+             `${pad(utc.getUTCHours())}:${pad(utc.getUTCMinutes())}:${pad(utc.getUTCSeconds())}`;
     }
 
     function esc(s) {
