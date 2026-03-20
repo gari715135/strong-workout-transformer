@@ -150,6 +150,40 @@
 
     button#downloadBtn:hover { opacity: 0.9; }
     button#downloadBtn:active { transform: scale(0.98); }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .filter-group label {
+      display: block;
+      font-size: 0.72rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .filter-group input[type="date"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      color: #e8e8f0;
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+
+    .filter-group input[type="date"]:focus {
+      outline: none;
+      border-color: #7c3aed;
+    }
+
+    .stat-value.filtered { color: #facc15; }
   </style>
 </head>
 <body>
@@ -167,6 +201,17 @@
       <div class="file-name" id="fileName"></div>
     </div>
 
+    <div class="filters">
+      <div class="filter-group">
+        <label for="dateFrom">Earliest date</label>
+        <input type="date" id="dateFrom">
+      </div>
+      <div class="filter-group">
+        <label for="dateTo">Latest date</label>
+        <input type="date" id="dateTo">
+      </div>
+    </div>
+
     <div id="output">
       <div class="stats">
         <div class="stat">
@@ -176,6 +221,10 @@
         <div class="stat">
           <div class="stat-label">Dumbbell rows updated</div>
           <div class="stat-value accent" id="statDumbbell">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Rows filtered out</div>
+          <div class="stat-value filtered" id="statFiltered">—</div>
         </div>
       </div>
       <button id="downloadBtn">Download updated CSV</button>
@@ -201,9 +250,22 @@
           const fields = results.meta.fields;
           const rows = results.data;
 
+          // Filter by date range if specified
+          const fromVal = document.getElementById('dateFrom').value;
+          const toVal = document.getElementById('dateTo').value;
+          const totalBefore = rows.length;
+
+          const filtered = rows.filter(r => {
+            if (!r['Date']) return true;
+            const rowDate = r['Date'].substring(0, 10); // "YYYY-MM-DD"
+            if (fromVal && rowDate < fromVal) return false;
+            if (toVal && rowDate > toVal) return false;
+            return true;
+          });
+
           // Transform: convert dates from NYC local time to UTC, double weight for dumbbell rows
           let dumbbellCount = 0;
-          const transformed = rows.map(r => {
+          const transformed = filtered.map(r => {
             const result = { ...r };
             if (r['Date']) result['Date'] = nycLocalToUtc(r['Date']);
             if ((r['Exercise Name'] || '').toLowerCase().includes('dumbbell')) {
@@ -214,8 +276,9 @@
             return result;
           });
 
-          document.getElementById('statTotal').textContent = rows.length.toLocaleString();
+          document.getElementById('statTotal').textContent = filtered.length.toLocaleString();
           document.getElementById('statDumbbell').textContent = dumbbellCount.toLocaleString();
+          document.getElementById('statFiltered').textContent = (totalBefore - filtered.length).toLocaleString();
 
           updatedData = transformed;
           updatedFields = fields;
