@@ -1,334 +1,485 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Strong Workout CSV Transformer</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Strong Workout CSV Transformer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
-      margin: 0;
-      padding: 40px 20px;
-      background: #0a0a0f;
-      color: #e8e8f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        min-height: 100vh;
+        margin: 0;
+        padding: 40px 20px;
+        background: #0a0a0f;
+        color: #e8e8f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
 
-    .card {
-      background: #13131a;
-      border: 1px solid #2a2a3a;
-      border-radius: 16px;
-      padding: 40px;
-      width: 100%;
-      max-width: 520px;
-      box-shadow: 0 0 60px rgba(80, 60, 200, 0.08);
-    }
+      .card {
+        background: #13131a;
+        border: 1px solid #2a2a3a;
+        border-radius: 16px;
+        padding: 40px;
+        width: 100%;
+        max-width: 520px;
+        box-shadow: 0 0 60px rgba(80, 60, 200, 0.08);
+      }
 
-    .logo {
-      font-size: 2rem;
-      margin-bottom: 12px;
-    }
+      .logo {
+        font-size: 2rem;
+        margin-bottom: 12px;
+      }
 
-    h1 {
-      font-size: 1.4rem;
-      font-weight: 700;
-      margin: 0 0 6px;
-      background: linear-gradient(90deg, #a78bfa, #60a5fa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+      h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 0 0 6px;
+        background: linear-gradient(90deg, #a78bfa, #60a5fa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
 
-    p.subtitle {
-      color: #888;
-      margin: 0 0 32px;
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
+      p.subtitle {
+        color: #888;
+        margin: 0 0 32px;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
 
-    .upload-area {
-      border: 2px dashed #2a2a3a;
-      border-radius: 12px;
-      padding: 32px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      position: relative;
-    }
+      .units {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
 
-    .upload-area:hover {
-      border-color: #7c3aed;
-      background: rgba(124, 58, 237, 0.05);
-    }
+      .units label.field-label {
+        display: block;
+        font-size: 0.72rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+      }
 
-    .upload-area.has-file {
-      border-color: #4ade80;
-      background: rgba(74, 222, 128, 0.05);
-    }
+      .units select {
+        width: 100%;
+        background: #1a1a24;
+        border: 1px solid #2a2a3a;
+        border-radius: 10px;
+        padding: 10px 12px;
+        color: #e8e8f0;
+        font-size: 0.9rem;
+        font-family: inherit;
+        cursor: pointer;
+      }
 
-    .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+      .units select:focus {
+        outline: none;
+        border-color: #7c3aed;
+      }
 
-    .upload-label {
-      display: block;
-      font-size: 0.9rem;
-      color: #aaa;
-      cursor: pointer;
-    }
+      .upload-area {
+        border: 2px dashed #2a2a3a;
+        border-radius: 12px;
+        padding: 32px;
+        text-align: center;
+        cursor: pointer;
+        transition:
+          border-color 0.2s,
+          background 0.2s;
+        position: relative;
+      }
 
-    .upload-label span {
-      color: #a78bfa;
-      font-weight: 600;
-    }
+      .upload-area:hover {
+        border-color: #7c3aed;
+        background: rgba(124, 58, 237, 0.05);
+      }
 
-    .file-name {
-      margin-top: 8px;
-      font-size: 0.8rem;
-      color: #4ade80;
-      font-weight: 500;
-    }
+      .upload-area.has-file {
+        border-color: #4ade80;
+        background: rgba(74, 222, 128, 0.05);
+      }
 
-    input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
-    }
+      .upload-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+      }
 
-    #output { display: none; margin-top: 24px; }
+      .upload-label {
+        display: block;
+        font-size: 0.9rem;
+        color: #aaa;
+        cursor: pointer;
+      }
 
-    .stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
+      .upload-label span {
+        color: #a78bfa;
+        font-weight: 600;
+      }
 
-    .stat {
-      background: #1a1a24;
-      border: 1px solid #2a2a3a;
-      border-radius: 10px;
-      padding: 14px 16px;
-    }
+      .file-name {
+        margin-top: 8px;
+        font-size: 0.8rem;
+        color: #4ade80;
+        font-weight: 500;
+      }
 
-    .stat-label {
-      font-size: 0.72rem;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 4px;
-    }
+      input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+      }
 
-    .stat-value {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #e8e8f0;
-    }
+      .filters {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 24px;
+      }
 
-    .stat-value.accent { color: #a78bfa; }
+      .filter-group label {
+        display: block;
+        font-size: 0.72rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+      }
 
-    button#downloadBtn {
-      width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #7c3aed, #2563eb);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 0.95rem;
-      font-weight: 600;
-      letter-spacing: 0.01em;
-      transition: opacity 0.2s, transform 0.1s;
-    }
+      .filter-group input[type="date"] {
+        width: 100%;
+        padding: 10px 12px;
+        background: #1a1a24;
+        border: 1px solid #2a2a3a;
+        border-radius: 8px;
+        color: #e8e8f0;
+        font-family: inherit;
+        font-size: 0.85rem;
+      }
 
-    button#downloadBtn:hover { opacity: 0.9; }
-    button#downloadBtn:active { transform: scale(0.98); }
+      .filter-group input[type="date"]:focus {
+        outline: none;
+        border-color: #7c3aed;
+      }
 
-    .filters {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 24px;
-    }
+      #output {
+        display: none;
+        margin-top: 24px;
+      }
 
-    .filter-group label {
-      display: block;
-      font-size: 0.72rem;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 6px;
-    }
+      .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
 
-    .filter-group input[type="date"] {
-      width: 100%;
-      padding: 10px 12px;
-      background: #1a1a24;
-      border: 1px solid #2a2a3a;
-      border-radius: 8px;
-      color: #e8e8f0;
-      font-family: inherit;
-      font-size: 0.85rem;
-    }
+      .stat {
+        background: #1a1a24;
+        border: 1px solid #2a2a3a;
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
 
-    .filter-group input[type="date"]:focus {
-      outline: none;
-      border-color: #7c3aed;
-    }
+      .stat-label {
+        font-size: 0.72rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+      }
 
-    .stat-value.filtered { color: #facc15; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="logo">🏋️</div>
-    <h1>Strong CSV Transformer</h1>
-    <p class="subtitle">Doubles the weight for all dumbbell exercises and fixes timestamps to UTC from NYC local time.</p>
+      .stat-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #e8e8f0;
+      }
 
-    <div class="upload-area" id="uploadArea">
-      <input type="file" id="fileInput" accept=".csv">
-      <div class="upload-icon">📂</div>
-      <label class="upload-label" for="fileInput">
-        Drop your CSV here or <span>browse</span>
-      </label>
-      <div class="file-name" id="fileName"></div>
+      .stat-value.accent {
+        color: #a78bfa;
+      }
+
+      .stat-value.filtered {
+        color: #facc15;
+      }
+
+      button#downloadBtn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #7c3aed, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        transition:
+          opacity 0.2s,
+          transform 0.1s;
+      }
+
+      button#downloadBtn:hover {
+        opacity: 0.9;
+      }
+      button#downloadBtn:active {
+        transform: scale(0.98);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo">🏋️</div>
+      <h1>Strong CSV Transformer</h1>
+      <p class="subtitle">
+        Doubles the weight for all dumbbell exercises, converts units, filters
+        by date range, and fixes timestamps to UTC from NYC local time.
+      </p>
+
+      <div class="units">
+        <div>
+          <label class="field-label" for="inputUnit">CSV weight is in</label>
+          <select id="inputUnit">
+            <option value="lb">lb</option>
+            <option value="kg">kg</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label" for="outputUnit">Output weight in</label>
+          <select id="outputUnit">
+            <option value="lb">lb</option>
+            <option value="kg">kg</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".csv" />
+        <div class="upload-icon">📂</div>
+        <label class="upload-label" for="fileInput">
+          Drop your CSV here or <span>browse</span>
+        </label>
+        <div class="file-name" id="fileName"></div>
+      </div>
+
+      <div class="filters">
+        <div class="filter-group">
+          <label for="dateFrom">Earliest date</label>
+          <input type="date" id="dateFrom" />
+        </div>
+        <div class="filter-group">
+          <label for="dateTo">Latest date</label>
+          <input type="date" id="dateTo" />
+        </div>
+      </div>
+
+      <div id="output">
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Total rows</div>
+            <div class="stat-value" id="statTotal">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Dumbbell rows updated</div>
+            <div class="stat-value accent" id="statDumbbell">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rows filtered out</div>
+            <div class="stat-value filtered" id="statFiltered">—</div>
+          </div>
+        </div>
+        <button id="downloadBtn">Download updated CSV</button>
+      </div>
     </div>
 
-    <div class="filters">
-      <div class="filter-group">
-        <label for="dateFrom">Earliest date</label>
-        <input type="date" id="dateFrom">
-      </div>
-      <div class="filter-group">
-        <label for="dateTo">Latest date</label>
-        <input type="date" id="dateTo">
-      </div>
-    </div>
+    <script>
+      const LB_PER_KG = 2.2046226218;
 
-    <div id="output">
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-label">Total rows</div>
-          <div class="stat-value" id="statTotal">—</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Dumbbell rows updated</div>
-          <div class="stat-value accent" id="statDumbbell">—</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Rows filtered out</div>
-          <div class="stat-value filtered" id="statFiltered">—</div>
-        </div>
-      </div>
-      <button id="downloadBtn">Download updated CSV</button>
-    </div>
-  </div>
+      let rawRows = null;
+      let rawFields = null;
+      let updatedData = null;
+      let updatedFields = null;
 
-  <script>
-    let updatedData = null;
-    let updatedFields = null;
+      function conversionFactor() {
+        const from = document.getElementById("inputUnit").value;
+        const to = document.getElementById("outputUnit").value;
+        if (from === to) return 1;
+        return from === "lb" ? 1 / LB_PER_KG : LB_PER_KG;
+      }
 
-    document.getElementById('fileInput').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      e.target.value = '';  // reset so re-selecting the same file fires change again
-      if (!file) return;
+      // Rounds to 2 decimals and strips any trailing zeros introduced by the conversion.
+      function roundWeight(n) {
+        return Math.round(n * 100) / 100;
+      }
 
-      document.getElementById('fileName').textContent = file.name;
-      document.getElementById('uploadArea').classList.add('has-file');
+      function transformAndRender() {
+        if (!rawRows) return;
+        const factor = conversionFactor();
 
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-          const fields = results.meta.fields;
-          const rows = results.data;
+        // Filter by date range if specified
+        const fromVal = document.getElementById("dateFrom").value;
+        const toVal = document.getElementById("dateTo").value;
+        const totalBefore = rawRows.length;
 
-          // Filter by date range if specified
-          const fromVal = document.getElementById('dateFrom').value;
-          const toVal = document.getElementById('dateTo').value;
-          const totalBefore = rows.length;
+        const filtered = rawRows.filter((r) => {
+          if (!r["Date"]) return true;
+          const rowDate = r["Date"].substring(0, 10); // "YYYY-MM-DD"
+          if (fromVal && rowDate < fromVal) return false;
+          if (toVal && rowDate > toVal) return false;
+          return true;
+        });
 
-          const filtered = rows.filter(r => {
-            if (!r['Date']) return true;
-            const rowDate = r['Date'].substring(0, 10); // "YYYY-MM-DD"
-            if (fromVal && rowDate < fromVal) return false;
-            if (toVal && rowDate > toVal) return false;
-            return true;
-          });
+        // Transform: convert dates from NYC local time to UTC, convert weight units,
+        // and double weight for dumbbell rows
+        let dumbbellCount = 0;
+        const transformed = filtered.map((r) => {
+          const result = { ...r };
+          if (r["Date"]) result["Date"] = nycLocalToUtc(r["Date"]);
 
-          // Transform: convert dates from NYC local time to UTC, double weight for dumbbell rows
-          let dumbbellCount = 0;
-          const transformed = filtered.map(r => {
-            const result = { ...r };
-            if (r['Date']) result['Date'] = nycLocalToUtc(r['Date']);
-            if ((r['Exercise Name'] || '').toLowerCase().includes('dumbbell')) {
-              const w = parseFloat(r['Weight']);
-              result['Weight'] = isNaN(w) ? r['Weight'] : w * 2;
+          const isDumbbell = (r["Exercise Name"] || "")
+            .toLowerCase()
+            .includes("dumbbell");
+          const exerciseName = (r["Exercise Name"] || "").toLowerCase();
+          const isExempt = exerciseName === "standing calf raise (dumbbell)";
+
+          const w = parseFloat(r["Weight"]);
+          if (!isNaN(w)) {
+            let newWeight = w * factor;
+            if (isDumbbell && !isExempt) {
+              newWeight *= 2;
               dumbbellCount++;
             }
-            return result;
+            result["Weight"] = roundWeight(newWeight);
+          }
+
+          return result;
+        });
+
+        document.getElementById("statTotal").textContent =
+          filtered.length.toLocaleString();
+        document.getElementById("statDumbbell").textContent =
+          dumbbellCount.toLocaleString();
+        document.getElementById("statFiltered").textContent = (
+          totalBefore - filtered.length
+        ).toLocaleString();
+
+        updatedData = transformed;
+        updatedFields = rawFields;
+        document.getElementById("output").style.display = "block";
+      }
+
+      document
+        .getElementById("inputUnit")
+        .addEventListener("change", transformAndRender);
+      document
+        .getElementById("outputUnit")
+        .addEventListener("change", transformAndRender);
+      document
+        .getElementById("dateFrom")
+        .addEventListener("change", transformAndRender);
+      document
+        .getElementById("dateTo")
+        .addEventListener("change", transformAndRender);
+
+      document
+        .getElementById("fileInput")
+        .addEventListener("change", function (e) {
+          const file = e.target.files[0];
+          e.target.value = ""; // reset so re-selecting the same file fires change again
+          if (!file) return;
+
+          document.getElementById("fileName").textContent = file.name;
+          document.getElementById("uploadArea").classList.add("has-file");
+
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function (results) {
+              rawFields = results.meta.fields;
+              rawRows = results.data;
+              transformAndRender();
+            },
           });
+        });
 
-          document.getElementById('statTotal').textContent = filtered.length.toLocaleString();
-          document.getElementById('statDumbbell').textContent = dumbbellCount.toLocaleString();
-          document.getElementById('statFiltered').textContent = (totalBefore - filtered.length).toLocaleString();
+      document
+        .getElementById("downloadBtn")
+        .addEventListener("click", function () {
+          if (!updatedData) return;
+          const csv = Papa.unparse({
+            fields: updatedFields,
+            data: updatedData,
+          });
+          const blob = new Blob([csv], { type: "text/csv" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "strong_workouts_updated.csv";
+          a.click();
+          URL.revokeObjectURL(url);
+        });
 
-          updatedData = transformed;
-          updatedFields = fields;
-          document.getElementById('output').style.display = 'block';
-        }
-      });
-    });
+      // Converts "YYYY-MM-DD HH:MM:SS" (NYC local time) to the equivalent UTC
+      // time in the same format. Handles EST (UTC-5) and EDT (UTC-4) automatically.
+      function nycLocalToUtc(dateStr) {
+        const match = dateStr.match(
+          /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/,
+        );
+        if (!match) return dateStr;
+        const [, Y, Mo, D, h, mi, s] = match;
 
-    document.getElementById('downloadBtn').addEventListener('click', function() {
-      if (!updatedData) return;
-      const csv = Papa.unparse({ fields: updatedFields, data: updatedData });
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'strong_workouts_updated.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-    });
+        // Temporarily treat the NYC local time as UTC to get a probe timestamp,
+        // then ask the Intl API what NYC wall-clock time that UTC maps to.
+        // The difference is the true NYC UTC offset at that moment (EST or EDT).
+        const probe = new Date(Date.UTC(+Y, +Mo - 1, +D, +h, +mi, +s));
 
-    // Converts "YYYY-MM-DD HH:MM:SS" (NYC local time) to the equivalent UTC
-    // time in the same format. Handles EST (UTC-5) and EDT (UTC-4) automatically.
-    function nycLocalToUtc(dateStr) {
-      const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
-      if (!match) return dateStr;
-      const [, Y, Mo, D, h, mi, s] = match;
+        const parts = new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/New_York",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).formatToParts(probe);
 
-      // Temporarily treat the NYC local time as UTC to get a probe timestamp,
-      // then ask the Intl API what NYC wall-clock time that UTC maps to.
-      // The difference is the true NYC UTC offset at that moment (EST or EDT).
-      const probe = new Date(Date.UTC(+Y, +Mo - 1, +D, +h, +mi, +s));
+        const get = (type) => +parts.find((p) => p.type === type).value;
+        const nycEpoch = Date.UTC(
+          get("year"),
+          get("month") - 1,
+          get("day"),
+          get("hour") % 24,
+          get("minute"),
+          get("second"),
+        );
 
-      const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-        hour12: false
-      }).formatToParts(probe);
+        const offsetMs = probe.getTime() - nycEpoch;
+        const utc = new Date(probe.getTime() + offsetMs);
 
-      const get = type => +parts.find(p => p.type === type).value;
-      const nycEpoch = Date.UTC(get('year'), get('month') - 1, get('day'),
-                                get('hour') % 24, get('minute'), get('second'));
-
-      const offsetMs = probe.getTime() - nycEpoch;
-      const utc = new Date(probe.getTime() + offsetMs);
-
-      const pad = n => String(n).padStart(2, '0');
-      return `${utc.getUTCFullYear()}-${pad(utc.getUTCMonth() + 1)}-${pad(utc.getUTCDate())} ` +
-             `${pad(utc.getUTCHours())}:${pad(utc.getUTCMinutes())}:${pad(utc.getUTCSeconds())}`;
-    }
-  </script>
-</body>
+        const pad = (n) => String(n).padStart(2, "0");
+        return (
+          `${utc.getUTCFullYear()}-${pad(utc.getUTCMonth() + 1)}-${pad(utc.getUTCDate())} ` +
+          `${pad(utc.getUTCHours())}:${pad(utc.getUTCMinutes())}:${pad(utc.getUTCSeconds())}`
+        );
+      }
+    </script>
+  </body>
 </html>
